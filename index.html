@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>생각박사 꾸꾸 - 초등학생용 AI 친구</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .animate-bounce { animation: bounce 1s infinite; }
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+            40%, 43% { transform: translate3d(0,-30px,0); }
+            70% { transform: translate3d(0,-15px,0); }
+            90% { transform: translate3d(0,-4px,0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useRef, useEffect } = React;
+
+        // Lucide Icons as SVG components
+        const Send = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="m22 2-7 20-4-9-9-4Z"/>
+                <path d="M22 2 11 13"/>
+            </svg>
+        );
+
+        const RotateCcw = () => (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+            </svg>
+        );
+
+        const Heart = () => (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/>
+            </svg>
+        );
+
+        const Star = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polygon points="12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26"/>
+            </svg>
+        );
+
+        const Smile = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="m9 9 1.5 1.5L12 9l1.5 1.5L15 9"/>
+                <path d="M8 15s1.5 2 4 2 4-2 4-2"/>
+            </svg>
+        );
+
+        const KidsAIFriend = () => {
+            const [messages, setMessages] = useState([
+                {
+                    role: 'assistant',
+                    content: '안녕! 나는 생각박사 꾸꾸야! 😊\n\n궁금한 게 있거나 이야기하고 싶은 게 있으면 언제든 말해줘!\n\n함께 재미있게 대화해보자! ✨'
+                }
+            ]);
+            const [currentMessage, setCurrentMessage] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            const messagesEndRef = useRef(null);
+
+            const scrollToBottom = () => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            };
+
+            useEffect(() => {
+                scrollToBottom();
+            }, [messages]);
+
+            // 즉시 응답 데이터베이스
+            const instantResponses = {
+                // 인사말
+                '안녕': ['안녕! 나는 생각박사 꾸꾸야! 오늘은 어떤 하루였어? 😊', '안녕! 반가워! 뭔가 재미있는 일 있었어? ✨'],
+                '안녕!': ['안녕! 반가워! 무엇이든 물어봐! 🌟', '안녕! 생각박사 꾸꾸야! 오늘 기분은 어때? 😄'],
+                '안녕하세요': ['안녕하세요! 생각박사 꾸꾸예요! 오늘 뭔가 재미있는 일 있었나요? ✨'],
+                '하이': ['하이! 반가워! 뭐하고 있었어? 😊'],
+                '헬로': ['헬로! 생각박사 꾸꾸야! 오늘은 어땠어? 🌟'],
+
+                // 일상 대화
+                '뭐해': ['나는 지금 너와 이야기할 준비를 하고 있었어! 너는 뭐하고 있었어? 😄', '너와 재미있는 대화를 기다리고 있었어! 🎉'],
+                '뭐하고있어': ['너와 이야기하는 중이야! 뭔가 궁금한 거 있어? 🤔'],
+                '이름이뭐야': ['내 이름은 생각박사 꾸꾸야! 너의 친구가 되고 싶어! 🧠💫'],
+                '너누구야': ['나는 생각박사 꾸꾸! 아이들의 든든한 친구야! 😊'],
+                
+                // 감정 표현
+                '심심해': ['심심하구나! 그럼 퀴즈 하나 낼까? 아니면 재미있는 이야기 들려줄까? 🤔', '심심할 때는 새로운 걸 배워보는 건 어때? 뭐가 궁금해? ✨'],
+                '심심하다': ['그럼 재미있는 걸 해보자! 동물 퀴즈 어때? 🐯'],
+                '재미있어': ['정말? 나도 너와 이야기하는 게 재미있어! 더 이야기해보자! 😆'],
+                '재밌어': ['우와! 나도 재밌어! 뭐가 가장 재미있었어? 🎉'],
+                '화나': ['화가 나는구나... 무슨 일이야? 이야기해보면 기분이 나아질지도! 🤗'],
+                '화나다': ['어머, 무슨 일이야? 괜찮아! 천천히 이야기해봐 😊'],
+                '슬퍼': ['슬프구나... 괜찮아, 내가 옆에 있어! 무슨 일인지 말해볼래? 🤗'],
+                '기뻐': ['와! 기쁘다니 나도 기뻐! 무슨 좋은 일이 있었어? 🎉'],
+                '행복해': ['행복하다니 정말 좋다! 나도 덩달아 행복해져! 😊'],
+                
+                // 생활
+                '배고파': ['배고프구나! 밥 먹고 와! 그리고 맛있는 거 먹었다고 알려줘! 🍚'],
+                '배고프다': ['어서 맛있는 거 먹어! 뭐 먹을 거야? 🍎'],
+                '졸려': ['졸리면 잠깐 쉬었다가 와도 돼! 푹 자고 나서 또 이야기하자! 😴'],
+                '피곤해': ['피곤하구나! 충분히 쉬어! 건강이 제일 중요해 💪'],
+                
+                // 감사 인사
+                '고마워': ['천만에! 언제든 도와줄게! 또 궁금한 거 있으면 말해줘! 😊'],
+                '고맙다': ['별말씀을! 나도 너와 이야기하는 게 즐거워! 🎉'],
+                '감사해': ['천만에! 도움이 됐다니 기뻐! 😊'],
+                
+                // 질문들
+                '몇살이야': ['나는 디지털 친구라 나이가 없어! 하지만 마음은 언제나 아이 같아! 😄'],
+                '어디살아': ['나는 컴퓨터 속에 살아! 언제나 너와 이야기할 준비가 되어있어! 💻'],
+                
+                // 게임/놀이
+                '놀자': ['좋아! 뭘 하고 싶어? 퀴즈? 이야기? 아니면 상상놀이? 🎮'],
+                '게임하자': ['오케이! 스무고개 게임 어때? 내가 생각한 걸 맞춰봐! 🎯'],
+                '퀴즈내줘': ['좋아! 퀴즈 시간이야! 🧩\n\n다리가 4개인 동물은? 힌트: 멍멍! 🐕'],
+                
+                // 학습
+                '공부해야해': ['공부하는 거구나! 무슨 공부해? 도와줄게! 📚'],
+                '숙제해야해': ['숙제 화이팅! 궁금한 게 있으면 언제든 물어봐! ✏️'],
+                
+                // 칭찬
+                '착하다': ['고마워! 너도 정말 착해! 😊'],
+                '똑똑해': ['너도 정말 똑똑해! 좋은 질문 많이 해줘서 고마워! 🧠'],
+                
+                // 간단한 지식 질문들
+                '하늘이왜파래': ['하늘이 파란 이유는 빛 때문이야! 파란색 빛이 더 많이 흩어져서 파랗게 보여! 🌈'],
+                '왜비와': ['구름 속 물방울들이 무거워져서 떨어지는 거야! 식물들이 좋아해! 🌧️'],
+                '태양이뭐야': ['태양은 아주 큰 별이야! 우리에게 빛과 따뜻함을 주는 고마운 친구! ☀️']
+            };
+
+            // 키워드 기반 스마트 응답
+            const getSmartResponse = (message) => {
+                const msg = message.toLowerCase().replace(/[!?.,\s]/g, '');
+                
+                // 나쁜 말 체크
+                const badWords = ['바보', '멍청', '죽어', '싫어'];
+                if (badWords.some(word => msg.includes(word))) {
+                    return '그런 말은 좋지 않아! 좋은 말로 이야기해보자! 😊';
+                }
+                
+                // 키워드 기반 응답
+                if (msg.includes('동물')) {
+                    return '동물을 좋아하는구나! 어떤 동물이 가장 좋아? 🐯🐰🐼';
+                }
+                if (msg.includes('색깔') || msg.includes('색')) {
+                    return '색깔 이야기구나! 무지개는 7가지 색이 있어! 어떤 색을 제일 좋아해? 🌈';
+                }
+                if (msg.includes('음식')) {
+                    return '음식 이야기! 맛있는 거 많이 먹어야 건강해져! 뭘 제일 좋아해? 🍎';
+                }
+                if (msg.includes('학교')) {
+                    return '학교 이야기구나! 학교에서 뭐가 제일 재미있어? 친구들이랑 노는 시간? 📚';
+                }
+                if (msg.includes('친구')) {
+                    return '친구는 정말 소중해! 좋은 친구가 있다는 건 행복한 일이야! 👫';
+                }
+                
+                return null;
+            };
+
+            const sendMessage = () => {
+                if (!currentMessage.trim()) return;
+
+                const userMessage = currentMessage.trim();
+                setCurrentMessage('');
+
+                // 사용자 메시지 추가
+                const newMessages = [...messages, { role: 'user', content: userMessage }];
+                setMessages(newMessages);
+                
+                // 로딩 표시 (즉시 응답을 위해 아주 짧게)
+                setIsLoading(true);
+                
+                setTimeout(() => {
+                    let response = null;
+                    const normalizedMsg = userMessage.toLowerCase().replace(/[!?.,\s]/g, '');
+                    
+                    // 1. 정확한 매칭 확인
+                    if (instantResponses[normalizedMsg]) {
+                        const responses = instantResponses[normalizedMsg];
+                        response = responses[Math.floor(Math.random() * responses.length)];
+                    }
+                    // 2. 스마트 응답 확인
+                    else {
+                        response = getSmartResponse(userMessage);
+                    }
+                    // 3. 기본 응답
+                    if (!response) {
+                        const defaultResponses = [
+                            '흥미롭네! 더 자세히 말해줄래? 🤔',
+                            '와! 그런 생각을 하는구나! 정말 궁금해! ✨',
+                            '오호! 재미있는 이야기네! 더 들려줘! 😊',
+                            '그렇구나! 나도 그런 걸 생각해본 적이 있어! 🌟',
+                            '우와! 정말 멋진 생각이야! 👏'
+                        ];
+                        response = defaultResponses[Math.floor(Math.random() * defaultResponses.length)];
+                    }
+                    
+                    setMessages(prev => [...prev, { role: 'assistant', content: response }]);
+                    setIsLoading(false);
+                }, 100); // 0.1초만 대기
+            };
+
+            const resetChat = () => {
+                setMessages([
+                    {
+                        role: 'assistant',
+                        content: '안녕! 나는 생각박사 꾸꾸야! 😊\n\n궁금한 게 있거나 이야기하고 싶은 게 있으면 언제든 말해줘!\n\n함께 재미있게 대화해보자! ✨'
+                    }
+                ]);
+            };
+
+            const handleKeyPress = (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            };
+
+            const quickMessages = [
+                "안녕! 😊",
+                "심심해",
+                "퀴즈 내줘!",
+                "재미있는 이야기 해줘",
+                "동물 이야기",
+                "놀자!"
+            ];
+
+            return React.createElement('div', { className: "min-h-screen bg-gradient-to-br from-pink-100 via-purple-50 to-blue-100 flex flex-col" },
+                // Header
+                React.createElement('div', { className: "bg-white shadow-lg border-b-4 border-purple-200 p-4" },
+                    React.createElement('div', { className: "max-w-4xl mx-auto flex items-center justify-between" },
+                        React.createElement('div', { className: "flex items-center gap-3" },
+                            React.createElement('div', { className: "w-12 h-12 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full flex items-center justify-center" },
+                                React.createElement(Heart)
+                            ),
+                            React.createElement('div', null,
+                                React.createElement('h1', { className: "text-2xl font-bold text-purple-800" }, '생각박사 꾸꾸'),
+                                React.createElement('p', { className: "text-sm text-gray-600" }, '빠르고 안전한 대화 친구 🧠⚡')
+                            )
+                        ),
+                        React.createElement('button', { 
+                            onClick: resetChat,
+                            className: "bg-purple-500 text-white px-4 py-2 rounded-xl hover:bg-purple-600 transition-colors flex items-center gap-2 shadow-lg"
+                        },
+                            React.createElement(RotateCcw),
+                            '새로 시작'
+                        )
+                    )
+                ),
+                
+                // Messages
+                React.createElement('div', { className: "flex-1 max-w-4xl mx-auto w-full p-4 overflow-y-auto" },
+                    React.createElement('div', { className: "space-y-4" },
+                        ...messages.map((message, index) =>
+                            React.createElement('div', {
+                                key: index,
+                                className: `flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`
+                            },
+                                React.createElement('div', {
+                                    className: `max-w-xs md:max-w-md lg:max-w-lg p-4 rounded-2xl shadow-lg ${
+                                        message.role === 'user'
+                                            ? 'bg-purple-500 text-white ml-4'
+                                            : 'bg-white text-gray-800 mr-4 border-2 border-purple-100'
+                                    }`
+                                },
+                                    message.role === 'assistant' && React.createElement('div', { className: "flex items-center gap-2 mb-2" },
+                                        React.createElement(Smile, { className: "w-5 h-5 text-purple-500" }),
+                                        React.createElement('span', { className: "font-semibold text-purple-600" }, '생각박사 꾸꾸')
+                                    ),
+                                    React.createElement('div', { 
+                                        className: "whitespace-pre-line text-sm md:text-base leading-relaxed",
+                                        style: { whiteSpace: 'pre-line' }
+                                    }, message.content)
+                                )
+                            )
+                        ),
+                        
+                        isLoading && React.createElement('div', { className: "flex justify-start" },
+                            React.createElement('div', { className: "bg-white p-4 rounded-2xl shadow-lg mr-4 border-2 border-purple-100" },
+                                React.createElement('div', { className: "flex items-center gap-2 mb-2" },
+                                    React.createElement(Smile, { className: "w-5 h-5 text-purple-500" }),
+                                    React.createElement('span', { className: "font-semibold text-purple-600" }, '생각박사 꾸꾸')
+                                ),
+                                React.createElement('div', { className: "flex items-center gap-2" },
+                                    React.createElement('div', { className: "flex space-x-1" },
+                                        React.createElement('div', { className: "w-2 h-2 bg-purple-400 rounded-full animate-bounce" }),
+                                        React.createElement('div', { className: "w-2 h-2 bg-pink-400 rounded-full animate-bounce", style: { animationDelay: '0.1s' } }),
+                                        React.createElement('div', { className: "w-2 h-2 bg-blue-400 rounded-full animate-bounce", style: { animationDelay: '0.2s' } })
+                                    ),
+                                    React.createElement('span', { className: "text-gray-500 text-sm" }, '생각중...')
+                                )
+                            )
+                        ),
+                        
+                        React.createElement('div', { ref: messagesEndRef })
+                    )
+                ),
+                
+                // Quick Messages
+                messages.length === 1 && React.createElement('div', { className: "max-w-4xl mx-auto w-full px-4 pb-4" },
+                    React.createElement('div', { className: "bg-white rounded-2xl shadow-lg p-4 border-2 border-purple-100" },
+                        React.createElement('h3', { className: "text-lg font-semibold text-purple-700 mb-3 flex items-center gap-2" },
+                            React.createElement(Star),
+                            '이런 말을 해볼까요?'
+                        ),
+                        React.createElement('div', { className: "grid grid-cols-2 md:grid-cols-3 gap-2" },
+                            ...quickMessages.map((msg, index) =>
+                                React.createElement('button', {
+                                    key: index,
+                                    onClick: () => setCurrentMessage(msg),
+                                    className: "bg-gradient-to-r from-purple-100 to-pink-100 text-purple-700 px-3 py-2 rounded-xl hover:from-purple-200 hover:to-pink-200 transition-colors text-sm font-medium border border-purple-200"
+                                }, msg)
+                            )
+                        )
+                    )
+                ),
+                
+                // Input
+                React.createElement('div', { className: "bg-white border-t-4 border-purple-200 p-4 shadow-lg" },
+                    React.createElement('div', { className: "max-w-4xl mx-auto" },
+                        React.createElement('div', { className: "flex items-center gap-3" },
+                            React.createElement('div', { className: "flex-1 relative" },
+                                React.createElement('textarea', {
+                                    value: currentMessage,
+                                    onChange: (e) => setCurrentMessage(e.target.value),
+                                    onKeyPress: handleKeyPress,
+                                    placeholder: "여기에 메시지를 입력해주세요... 😊",
+                                    rows: 1,
+                                    className: "w-full p-4 pr-12 border-2 border-purple-200 rounded-2xl focus:border-purple-500 focus:outline-none resize-none text-base",
+                                    style: { minHeight: '56px', maxHeight: '120px' }
+                                })
+                            ),
+                            React.createElement('button', {
+                                onClick: sendMessage,
+                                disabled: !currentMessage.trim() || isLoading,
+                                className: "bg-gradient-to-r from-purple-500 to-pink-500 text-white p-4 rounded-2xl hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg"
+                            },
+                                React.createElement(Send)
+                            )
+                        )
+                    )
+                ),
+                
+                // Safety & Speed Notice
+                React.createElement('div', { className: "bg-green-50 border-t-2 border-green-200 p-3" },
+                    React.createElement('div', { className: "max-w-4xl mx-auto text-center" },
+                        React.createElement('p', { className: "text-green-700 text-sm font-medium" },
+                            '⚡ 초고속 응답! 🛡️ 안전한 대화! 언제든 선생님이나 부모님과 함께 사용해주세요'
+                        )
+                    )
+                )
+            );
+        };
+
+        ReactDOM.render(React.createElement(KidsAIFriend), document.getElementById('root'));
+    </script>
+</body>
+</html>
